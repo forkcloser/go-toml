@@ -1,0 +1,16 @@
+# the first comment
+a = 1
+
+b = 2
+
+[first]
+c = 3
+
+# about the second table
+# on two lines
+[second]
+d = 4
+
+# not attached: a blank line follows
+
+[third]

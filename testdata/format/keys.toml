@@ -1,0 +1,7 @@
+"bare" = 1
+'literal' = 2
+"needs space" = 3
+"" = 4
+"escaped\u0041" = 5
+"dash-and_underscore" = 6
+x."quoted".'also' = 7

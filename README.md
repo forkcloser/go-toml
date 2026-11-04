@@ -14,5 +14,10 @@ if err := toml.Decode(data, &config); err != nil {
 doc, err := toml.Parse(data) // doc.Bytes() is data, byte for byte
 ```
 
-Parsing and decoding are built; editing, formatting (`tomlfmt`) and schemas are
+```sh
+tomlfmt config.toml            # format in place
+tomlfmt --check *.toml         # print the diff of what is not formatted, exit 1
+```
+
+Parsing, decoding and formatting are built; editing by byte range and schemas are
 specified in [docs/SPEC.md](docs/SPEC.md) and come next.

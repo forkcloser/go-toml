@@ -75,3 +75,5 @@ golangci:
             allow:
               # the decoder the library delegates validity and decoding to
               - github.com/pelletier/go-toml/v2
+              # every file call tomlfmt makes (book: xos replaces os)
+              - github.com/forkcloser/xos

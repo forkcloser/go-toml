@@ -1,0 +1,6 @@
+#:schema ./schema.json
+################
+a = 1 # trailing, far away
+b = 2 #close
+#no space after the hash
+c = [1, 2] #   kept as written

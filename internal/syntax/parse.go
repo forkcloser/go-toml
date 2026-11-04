@@ -250,7 +250,7 @@ func (p *parser) simpleKey() (*Node, error) {
 	}
 
 	end := p.pos
-	for end < len(p.src) && isBareKeyByte(p.src[end]) {
+	for end < len(p.src) && IsBareKeyByte(p.src[end]) {
 		end++
 	}
 
@@ -261,7 +261,8 @@ func (p *parser) simpleKey() (*Node, error) {
 	return p.token(KindBareKey, end-p.pos), nil
 }
 
-func isBareKeyByte(char byte) bool {
+// IsBareKeyByte reports whether char may appear in a bare key.
+func IsBareKeyByte(char byte) bool {
 	return char >= 'A' && char <= 'Z' || char >= 'a' && char <= 'z' || isDigit(char) ||
 		char == '_' || char == '-'
 }
@@ -400,7 +401,7 @@ func (p *parser) scalarToken(end int) (*Node, error) {
 }
 
 func isScalarByte(char byte) bool {
-	return isBareKeyByte(char) || char == '+' || char == '.' || char == ':'
+	return IsBareKeyByte(char) || char == '+' || char == '.' || char == ':'
 }
 
 func isDigit(char byte) bool {

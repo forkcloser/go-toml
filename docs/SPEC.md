@@ -41,8 +41,8 @@ TOML file, as a limen lint and fix lane.
   path; replace its value, insert a key or a table, remove one. Every byte outside
   the edited range is unchanged. A new node is written in the canonical layout
   (below).
-- **Formatting.** `Format(doc, opts) ([]byte, error)` applies the canonical layout to
-  the whole document; with a schema in `opts`, the key order too.
+- **Formatting.** `doc.Format() ([]byte, error)` applies the canonical layout to the
+  whole document; the schema's key order joins it with schemas, as an option.
 - **Schemas.** `LoadSchema(path)` reads a JSON Schema; `doc.Validate(schema)` returns
   the violations, each with key path, line and column.
 - **Values never change.** Formatting and editing preserve meaning: the document,
@@ -63,9 +63,14 @@ Decided once, with no options beyond those listed:
 - Keys bare where TOML allows, quoted otherwise; quoting style otherwise kept.
 - Inline tables and arrays on one line when they fit in 100 columns, as
   `{ a = 1, b = 2 }` and `[1, 2]`; otherwise one element per line, indented two
-  spaces, with a trailing comma.
-- Comments kept, attached to the item they precede or follow on the same line; one
-  space before a trailing `#`, and one after it when the comment is not empty.
+  spaces, with a trailing comma. A comma after the last element is the author's word
+  that the collection is one element per line, and keeps it so even once it would
+  fit (the "magic trailing comma" of Black, ruff and tombi): a list laid out for
+  clean diffs as it grows is never collapsed.
+- Comments kept, attached to the item they precede or follow on the same line, one
+  space before a trailing `#`. Their text is kept as written: a comment is free text,
+  and making it start with `# ` would rewrite `#:schema` directives, banners of `#`
+  and commented-out code alike.
 - String forms, number and date spellings: kept as written.
 - Key order: kept as written, unless a schema orders it (below).
 
@@ -98,11 +103,14 @@ formatted by tomlfmt are the same bytes.
 ## The command
 
 ```
-tomlfmt [--check] [--schema <file>] [<path>…]
+tomlfmt [--check] [--schema <file>] [<file>…]
+tomlfmt --version
 ```
 
-- With paths: format each file in place, atomically (temporary file beside it, sync,
-  rename). A directory is walked for `*.toml`, honouring `.gitignore`.
+- With files: format each in place, atomically (a temporary file beside it, with the
+  file's mode, synced, then renamed over it). Paths name files: which files of a tree
+  to format is the caller's decision (limen's recipes list them through git), not a
+  walk tomlfmt makes and every caller then has to steer.
 - Without paths: read standard input, write standard output.
 - `--check`: write nothing; list each file whose formatted form differs, with a
   unified diff, and exit 1 if any does.
