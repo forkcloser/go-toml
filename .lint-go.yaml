@@ -69,6 +69,10 @@
 golangci:
   linters:
     settings:
+      wrapcheck:
+        # this module's own packages: their errors carry their context already
+        ignore-package-globs:
+          - github.com/forkcloser/go-toml/*
       depguard:
         rules:
           main:
@@ -77,3 +81,7 @@ golangci:
               - github.com/pelletier/go-toml/v2
               # every file call tomlfmt makes (book: xos replaces os)
               - github.com/forkcloser/xos
+              # the JSON Schema validator schemas delegate to
+              - github.com/santhosh-tekuri/jsonschema/v6
+              # the validator's message printer, which it requires itself
+              - golang.org/x/text

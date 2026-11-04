@@ -1,0 +1,19 @@
+#:schema comments.schema.json
+x = 3
+# above y, first line
+# above y, second line
+y = 2 # trailing y
+z = 1
+
+b = 2
+# above c
+c = 1
+# below b, with no key after it
+
+a = 1
+
+# above the header
+[table]
+a = 2 # trailing a
+# above b
+b = 1

@@ -8,4 +8,10 @@
 // wraps [ErrInvalid] (the input is not TOML 1.1), [ErrDecode] (it is, but does not
 // fit the value) or, for a bug in this package rather than a fault of the input,
 // [ErrInternal], and carries the line and column it concerns.
+//
+// [LoadSchema] reads a JSON Schema from a local file. [Document.Validate] checks a
+// document against it and returns [Violations], each wrapping [ErrViolation] with
+// the line, column and key of the value; [WithSchema] has [Document.Format] order
+// each table's keys by the schema's x-tombi-table-keys-order annotations. A file
+// LoadSchema cannot use is an error wrapping [ErrSchema].
 package toml

@@ -1,0 +1,28 @@
+[ascending]
+B = 2
+a = 3
+"a b" = 4
+b = 1
+
+[descending]
+c = 2
+b = 3
+a = 1
+
+[version]
+U8 = 4
+u_8 = 3
+u8 = 2
+u16 = 1
+u128 = 5
+
+[declared]
+name = "n"
+version = "1"
+edition = 2021
+extra = 1
+other = 2
+
+[unannotated]
+z = 1
+a = 2

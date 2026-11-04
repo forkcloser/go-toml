@@ -4,6 +4,8 @@ import (
 	"errors"
 	"fmt"
 	"strings"
+
+	"github.com/forkcloser/go-toml/internal/schema"
 )
 
 var (
@@ -15,17 +17,23 @@ var (
 	// ErrInternal is wrapped by an error that is a bug in this package, not a fault of
 	// the input: the syntax tree failing on a document the decoder accepted.
 	ErrInternal = errors.New("internal error in github.com/forkcloser/go-toml")
+	// ErrSchema is wrapped by the error about a file [LoadSchema] cannot use: not a
+	// JSON Schema, or with an annotation this package cannot apply.
+	ErrSchema = schema.ErrInvalid
+	// ErrViolation is wrapped by each of the [Violations] of a schema.
+	ErrViolation = errors.New("does not match the schema")
 )
 
 // Error is a failure at a place in a document.
 type Error struct {
-	// Err is ErrInvalid, ErrDecode or ErrInternal.
+	// Err is ErrInvalid, ErrDecode, ErrViolation or ErrInternal.
 	Err error
 	// Line and Column are 1-based, Column counting characters; both are zero when the
 	// failure has no single place.
 	Line   int
 	Column int
-	// Key is the dotted key the failure concerns, when there is one.
+	// Key is the dotted key the failure concerns, when there is one; for a
+	// violation, an array's element is its index, in decimal.
 	Key []string
 	// Msg says what is wrong.
 	Msg string

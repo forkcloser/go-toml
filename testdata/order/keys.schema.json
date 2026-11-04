@@ -1,0 +1,21 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "x-tombi-table-keys-order": "schema",
+  "properties": {
+    "name": {},
+    "nested": {
+      "type": "object",
+      "x-tombi-table-keys-order": "schema",
+      "properties": {
+        "second": {},
+        "first": { "type": "object", "x-tombi-table-keys-order": "descending" }
+      }
+    },
+    "inline": { "type": "object", "x-tombi-table-keys-order": "ascending" },
+    "list": {
+      "type": "array",
+      "items": { "type": "object", "x-tombi-table-keys-order": "ascending" }
+    }
+  }
+}

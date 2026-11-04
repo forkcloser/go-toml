@@ -14,7 +14,7 @@ import (
 )
 
 // formatted parses input, formats it, and checks the result is a fixed point.
-func formatted(t *testing.T, input []byte) []byte {
+func formatted(t *testing.T, input []byte, opts ...toml.Option) []byte {
 	t.Helper()
 
 	doc, err := toml.Parse(input)
@@ -22,7 +22,7 @@ func formatted(t *testing.T, input []byte) []byte {
 		t.Fatalf("Parse: %v", err)
 	}
 
-	once, err := doc.Format()
+	once, err := doc.Format(opts...)
 	if err != nil {
 		t.Fatalf("Format: %v\ninput:\n%s", err, input)
 	}
@@ -32,7 +32,7 @@ func formatted(t *testing.T, input []byte) []byte {
 		t.Fatalf("Parse of the formatted document: %v\nformatted:\n%s", err, once)
 	}
 
-	twice, err := again.Format()
+	twice, err := again.Format(opts...)
 	if err != nil {
 		t.Fatalf("Format of the formatted document: %v", err)
 	}

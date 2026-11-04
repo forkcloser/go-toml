@@ -1,0 +1,11 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "inline": { "type": "object", "x-tombi-table-keys-order": "ascending" },
+    "bin": {
+      "type": "array",
+      "items": { "type": "object", "x-tombi-table-keys-order": "ascending" }
+    }
+  }
+}

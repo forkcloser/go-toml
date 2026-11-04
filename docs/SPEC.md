@@ -12,8 +12,9 @@ TOML file, as a limen lint and fix lane.
 - The repository root (package `toml`): the library. `cmd/tomlfmt/`: the command.
 - Go, the book's baseline `go` directive; `github.com/forkcloser/xos` for every file
   call it covers. Two dependencies, pinned: `pelletier/go-toml/v2` (its decoder) and
-  `santhosh-tekuri/jsonschema/v6` (validation); any other is argued in the pull
-  request that adds it. Tests also use `toml-lang/toml-test/v2`, the official
+  `santhosh-tekuri/jsonschema/v6` (validation), with `golang.org/x/text`, which
+  jsonschema requires, for its messages; any other is argued in the pull request
+  that adds it. Tests also use `toml-lang/toml-test/v2`, the official
   suite, which embeds its cases.
 
 ## The library
@@ -41,10 +42,11 @@ TOML file, as a limen lint and fix lane.
   path; replace its value, insert a key or a table, remove one. Every byte outside
   the edited range is unchanged. A new node is written in the canonical layout
   (below).
-- **Formatting.** `doc.Format() ([]byte, error)` applies the canonical layout to the
-  whole document; the schema's key order joins it with schemas, as an option.
+- **Formatting.** `doc.Format(...Option) ([]byte, error)` applies the canonical
+  layout to the whole document; `WithSchema(schema)` adds the schema's key order.
 - **Schemas.** `LoadSchema(path)` reads a JSON Schema; `doc.Validate(schema)` returns
-  the violations, each with key path, line and column.
+  nil or `Violations`, each an `Error` with key path, line and column;
+  `doc.SchemaDirective()` returns what a `#:schema` first line names.
 - **Values never change.** Formatting and editing preserve meaning: the document,
   decoded by a full TOML 1.1 decoder before and after, is equal (an edit differs
   exactly by the edit). The library checks this itself on `Format` and fails rather
@@ -76,23 +78,45 @@ Decided once, with no options beyond those listed:
 
 ## Schemas: validation and key order
 
-A JSON Schema (draft 2020-12) does two things for a file, and only when one is given:
-`--schema <file>`, or a `#:schema <path>` directive on the file's first line, resolved
-relative to the file. A schema is a local file; tomlfmt never fetches one.
+A JSON Schema (draft 2020-12, or the draft its `$schema` names) does two things for a
+file, and only when one is given: `--schema <file>`, or a `#:schema <path>` directive
+on the file's first line, resolved relative to the file; `--schema`, the explicit
+word, wins over the directive. A schema is a local file, and so is every file its
+references name: a directive or a reference naming a URL is an error, never a
+download.
 
-- **Validation.** The document, decoded, is validated against the schema; each
-  violation is reported with its key path, line and column, and the file is left
-  unchanged.
+- **Validation.** The document, decoded, is validated against the schema, read as
+  JSON reads: a table is an object, an array an array; a date-time, a date or a time
+  is a string, its RFC 3339 text (format assertion is the schema's choice, off by
+  default in 2020-12); `nan` and `inf` are no JSON number, so a schema cannot describe
+  them, and a document holding one breaks any schema. Each violation is reported
+  with its key path, line and column: the key that writes the value, the header of a
+  table, the element of an array, the first key inside a table that is only implied;
+  an additional property at its own key; a failed `anyOf` or `oneOf` once, saying
+  why each branch failed. A file with a violation is left unchanged.
 - **Key order.** The schema's `x-tombi-table-keys-order` annotations, in the
   vocabulary [tombi](https://github.com/tombi-toml/tombi) documents (strategies
   `schema`, `ascending`, `descending`, `version-sort`, per group of `properties`,
   `patternProperties` and `additionalProperties`), order a table's keys:
+  - the annotation is one strategy for every key, or an object of groups to
+    strategies, applied in the order the object lists them; `schema` is the order
+    `properties` declares, and orders only that group; `ascending` and `descending`
+    compare bytes; `version-sort` is the
+    [Rust style guide's](https://doc.rust-lang.org/nightly/style-guide/#sorting);
   - declared keys in the order the annotation gives; any other key after them, in
     the order written;
+  - the subschemas that apply to a table are its schema's references, `allOf`, the
+    `anyOf` and `oneOf` branches the table matches, and the `then` or `else` its `if`
+    chooses; the first annotation among them is the table's;
+  - keys move within a run of lines between blank lines, never across one (a blank
+    line is the author's grouping), and never past a table header: a table's
+    sections stay where they are written; dotted keys sharing a first part are
+    gathered at the place of the first, then ordered by the subtable's own schema;
+    an inline table's keys are ordered the same way;
   - the elements of an array, and of an array of tables, are never reordered: their
     order is meaning;
   - a key moves with its comments: those on the lines directly above it, and the one
-    trailing it;
+    trailing it; a `#:schema` directive stays the first line;
   - without a schema, or without an annotation for a table, keys stay as written:
     tomlfmt never guesses an order.
 
@@ -131,9 +155,12 @@ tomlfmt --version
 - Fuzzing: `Parse` accepts exactly what go-toml's decoder accepts, and `Parse` then
   `Bytes` is the identity; `Format` is idempotent; `Format`
   preserves meaning (decode before and after), with and without a schema's ordering.
-- Schemas: validation results against the JSON Schema test suite's draft 2020-12
-  cases, through TOML documents expressing them; ordering on each strategy, with
-  comments.
+- Schemas: what is ours, not the validator's (jsonschema runs the JSON Schema test
+  suite itself, and running it again through TOML documents would test it, not us):
+  the data model TOML values are read as, where each violation is placed, and
+  ordering, on golden files for each strategy, group, combinator, comment
+  placement, dotted key and inline table; fuzzing holds `Validate` to placing every
+  violation inside the document; version sort on the style guide's own example.
 - Edits: each operation leaves every byte outside its range unchanged, checked on
   real-world files (`Cargo.toml`, `pyproject.toml`, hermetic manifests).
 

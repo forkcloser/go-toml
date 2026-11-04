@@ -190,3 +190,135 @@ func TestVersion(t *testing.T) {
 		t.Fatalf("tomlfmt --version = %+v, want exit 0 and \"tomlfmt dev\"", got)
 	}
 }
+
+// orderSchema wants name a string, and orders the root's keys ascending.
+const orderSchema = `{
+	"$schema": "https://json-schema.org/draft/2020-12/schema",
+	"type": "object",
+	"x-tombi-table-keys-order": "ascending",
+	"properties": { "name": { "type": "string" } }
+}`
+
+// writeBeside writes a file named name in dir.
+func writeBeside(t *testing.T, dir, name, content string) string {
+	t.Helper()
+
+	path := filepath.Join(dir, name)
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
+		t.Fatalf("write %s: %v", path, err)
+	}
+
+	return path
+}
+
+func TestSchemaOrders(t *testing.T) {
+	t.Parallel()
+
+	schema := writeBeside(t, t.TempDir(), "schema.json", orderSchema)
+	path := writeFile(t, "name = \"n\"\nb = 1\na = 2\n", 0o644)
+
+	if got := tomlfmt(t, "", "--schema", schema, path); got.code != exitDone || got.stderr != "" {
+		t.Fatalf("tomlfmt --schema = %+v, want exit 0", got)
+	}
+
+	if content, want := readFile(t, path), "a = 2\nb = 1\nname = \"n\"\n"; content != want {
+		t.Fatalf("the file holds %q, want %q", content, want)
+	}
+}
+
+func TestSchemaViolation(t *testing.T) {
+	t.Parallel()
+
+	schema := writeBeside(t, t.TempDir(), "schema.json", orderSchema)
+	source := "b = 1\nname = 1\n"
+	path := writeFile(t, source, 0o644)
+
+	for _, args := range [][]string{{"--schema", schema, path}, {"--check", "--schema", schema, path}} {
+		got := tomlfmt(t, "", args...)
+		if got.code != exitViolation ||
+			!strings.Contains(
+				got.stderr,
+				path+": does not match the schema: line 2, column 1, key name: got number, want string",
+			) {
+			t.Fatalf("tomlfmt %v = %+v, want exit 4 naming the file, line, column and key", args, got)
+		}
+
+		if content := readFile(t, path); content != source {
+			t.Fatalf("a file breaking its schema was changed to %q", content)
+		}
+	}
+}
+
+// TestSchemaDirective holds the directive to its path, relative to the file, and
+// --schema to winning over it.
+func TestSchemaDirective(t *testing.T) {
+	t.Parallel()
+
+	dir := t.TempDir()
+	writeBeside(t, dir, "schema.json", orderSchema)
+
+	nested := filepath.Join(dir, "nested")
+	if err := os.Mkdir(nested, 0o755); err != nil {
+		t.Fatalf("mkdir: %v", err)
+	}
+
+	path := writeBeside(t, nested, "config.toml", "#:schema ../schema.json\nb = 1\na = 2\n")
+
+	if got := tomlfmt(t, "", path); got.code != exitDone {
+		t.Fatalf("tomlfmt on a file naming its schema = %+v, want exit 0", got)
+	}
+
+	if content, want := readFile(t, path), "#:schema ../schema.json\na = 2\nb = 1\n"; content != want {
+		t.Fatalf("the file holds %q, want %q", content, want)
+	}
+
+	unordered := writeBeside(t, dir, "unordered.json", `{"x-tombi-table-keys-order": "descending"}`)
+
+	if got := tomlfmt(t, "", "--schema", unordered, path); got.code != exitDone {
+		t.Fatalf("tomlfmt --schema over a directive = %+v, want exit 0", got)
+	}
+
+	if content, want := readFile(t, path), "#:schema ../schema.json\nb = 1\na = 2\n"; content != want {
+		t.Fatalf("--schema did not win over the directive: the file holds %q, want %q", content, want)
+	}
+}
+
+func TestSchemaNeverFetched(t *testing.T) {
+	t.Parallel()
+
+	path := writeFile(t, "#:schema https://json.schemastore.org/cargo.json\na = 1\n", 0o644)
+
+	if got := tomlfmt(t, "", path); got.code != exitInvalid || !strings.Contains(got.stderr, "never fetches") {
+		t.Fatalf("tomlfmt on a directive naming a URL = %+v, want exit 2 saying it never fetches", got)
+	}
+}
+
+func TestSchemaFaults(t *testing.T) {
+	t.Parallel()
+
+	path := writeFile(t, "a = 1\n", 0o644)
+	invalid := writeBeside(t, t.TempDir(), "schema.json", `{"type": 1}`)
+	missing := filepath.Join(t.TempDir(), "absent.json")
+
+	if got := tomlfmt(
+		t,
+		"",
+		"--schema",
+		invalid,
+		path,
+	); got.code != exitInvalid ||
+		!strings.Contains(got.stderr, "invalid JSON Schema") {
+		t.Fatalf("tomlfmt with an invalid schema = %+v, want exit 2", got)
+	}
+
+	if got := tomlfmt(
+		t,
+		"",
+		"--schema",
+		missing,
+		path,
+	); got.code != exitIO ||
+		!strings.Contains(got.stderr, "absent.json") {
+		t.Fatalf("tomlfmt with a missing schema = %+v, want exit 3 naming it", got)
+	}
+}

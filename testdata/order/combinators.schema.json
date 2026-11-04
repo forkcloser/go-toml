@@ -1,0 +1,33 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "referenced": { "$ref": "combinators.defs.json#/$defs/ascending" },
+    "combined": { "allOf": [{ "type": "object" }, { "$ref": "#/$defs/descending" }] },
+    "chosen": {
+      "type": "array",
+      "items": {
+        "anyOf": [
+          {
+            "properties": { "kind": { "const": "up" } },
+            "required": ["kind"],
+            "x-tombi-table-keys-order": "ascending"
+          },
+          {
+            "properties": { "kind": { "const": "down" } },
+            "required": ["kind"],
+            "x-tombi-table-keys-order": "descending"
+          }
+        ]
+      }
+    },
+    "conditional": {
+      "if": { "required": ["up"] },
+      "then": { "x-tombi-table-keys-order": "ascending" },
+      "else": { "x-tombi-table-keys-order": "descending" }
+    }
+  },
+  "$defs": {
+    "descending": { "x-tombi-table-keys-order": "descending" }
+  }
+}
