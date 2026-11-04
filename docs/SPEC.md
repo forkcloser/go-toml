@@ -103,11 +103,14 @@ formatted by tomlfmt are the same bytes.
 ## The command
 
 ```
-tomlfmt [--check] [--schema <file>] [<path>…]
+tomlfmt [--check] [--schema <file>] [<file>…]
+tomlfmt --version
 ```
 
-- With paths: format each file in place, atomically (temporary file beside it, sync,
-  rename). A directory is walked for `*.toml`, honouring `.gitignore`.
+- With files: format each in place, atomically (a temporary file beside it, with the
+  file's mode, synced, then renamed over it). Paths name files: which files of a tree
+  to format is the caller's decision (limen's recipes list them through git), not a
+  walk tomlfmt makes and every caller then has to steer.
 - Without paths: read standard input, write standard output.
 - `--check`: write nothing; list each file whose formatted form differs, with a
   unified diff, and exit 1 if any does.
