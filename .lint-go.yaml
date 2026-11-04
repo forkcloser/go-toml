@@ -81,6 +81,8 @@ golangci:
               - github.com/pelletier/go-toml/v2
               # every file call tomlfmt makes (book: xos replaces os)
               - github.com/forkcloser/xos
+              # its atomic file write, which tomlfmt formats in place with
+              - github.com/mycophonic/primordium/filesystem
               # the JSON Schema validator schemas delegate to
               - github.com/santhosh-tekuri/jsonschema/v6
               # the validator's message printer, which it requires itself
