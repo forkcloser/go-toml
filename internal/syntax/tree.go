@@ -100,6 +100,18 @@ func (n *Node) Value() *Node {
 	panic("syntax: a key-value without a value")
 }
 
+// IsElement reports whether a child of an array or an inline table is one of its
+// elements, not a bracket, a comma or what lies between them.
+func IsElement(child *Node) bool {
+	switch child.Kind { //nolint:exhaustive // the kinds that can occur here are named; default is every other by design
+	case KindWhitespace, KindNewline, KindComment, KindComma,
+		KindOpenBracket, KindCloseBracket, KindOpenBrace, KindCloseBrace:
+		return false
+	default:
+		return true
+	}
+}
+
 func (n *Node) add(child *Node) {
 	n.Children = append(n.Children, child)
 }

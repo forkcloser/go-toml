@@ -53,6 +53,13 @@ func (d *Document) Bytes() []byte {
 	return buf.Bytes()
 }
 
+// SchemaDirective returns the schema the document names, as written, if its first
+// line is a "#:schema <location>" comment. Where the location is relative to is the
+// caller's to say: the document's own file, for tomlfmt.
+func (d *Document) SchemaDirective() (string, bool) {
+	return syntax.Directive(d.root)
+}
+
 // Decode reads the document into value, as [Decode] does.
 func (d *Document) Decode(value any) error {
 	return Decode(d.Bytes(), value)

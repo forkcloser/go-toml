@@ -1,0 +1,15 @@
+inline = { # opening
+  # above c
+  c = 1, # trailing c
+  b = 2,
+  a = 3, # trailing a
+  # closing
+}
+
+[[bin]]
+z = 1
+a = 2
+
+[[bin]]
+y = 1
+b = 2

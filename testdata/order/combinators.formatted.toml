@@ -1,0 +1,13 @@
+referenced = { a = 2, b = 1 }
+combined = { b = 2, a = 1 }
+conditional = { a = 2, b = 1, up = true }
+
+[[chosen]]
+a = 2
+b = 1
+kind = "up"
+
+[[chosen]]
+kind = "down"
+b = 2
+a = 1

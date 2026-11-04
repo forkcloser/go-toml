@@ -1,0 +1,6 @@
+list = [{ b = 1, a = 2 }, { d = 3, c = 4 }]
+nested.first.a = 1
+inline = { z = 1, y = { b = 1, a = 2 }, x = 2 }
+nested.second = 2
+name = "n"
+nested.first.b = 2

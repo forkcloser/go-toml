@@ -7,7 +7,27 @@ import (
 	gotoml "github.com/pelletier/go-toml/v2"
 
 	"github.com/forkcloser/go-toml/internal/format"
+	"github.com/forkcloser/go-toml/internal/order"
 )
+
+// Option changes what [Document.Format] does.
+type Option func(*options)
+
+type options struct {
+	schema *Schema
+}
+
+// WithSchema orders each table's keys by the schema's x-tombi-table-keys-order
+// annotations: declared keys in the order the annotation gives, any other after them
+// in the order written. Keys move with the comments on the lines directly above them
+// and the one trailing them, within the lines between two blank lines, never past a
+// table header; elements of arrays, and of arrays of tables, keep their order. A
+// table no annotation covers keeps its keys as written.
+func WithSchema(s *Schema) Option {
+	return func(o *options) {
+		o.schema = s
+	}
+}
 
 // Format returns the document in the canonical layout: one space around "=", no
 // indentation outside collections, one blank line before each table, runs of blank
@@ -15,10 +35,28 @@ import (
 // have no comma after their last element and fit in 100 columns, otherwise one
 // element per line with a trailing comma,
 // comments kept where they were, keys unquoted where TOML allows, values spelled as
-// they were. The result is checked to mean what the document means; one that does
-// not is an [ErrInternal] error, never returned.
-func (d *Document) Format() ([]byte, error) {
-	formatted := format.Document(d.root)
+// they were; keys in the order written, unless [WithSchema] orders them. The result
+// is checked to mean what the document means; one that does not is an [ErrInternal]
+// error, never returned.
+func (d *Document) Format(opts ...Option) ([]byte, error) {
+	var chosen options
+
+	for _, opt := range opts {
+		opt(&chosen)
+	}
+
+	root := d.root
+
+	if chosen.schema != nil {
+		instance, err := d.instance()
+		if err != nil {
+			return nil, err
+		}
+
+		root = order.Keys(root, chosen.schema.compiled.Sorter(instance))
+	}
+
+	formatted := format.Document(root)
 
 	if err := sameMeaning(d.Bytes(), formatted); err != nil {
 		return nil, err

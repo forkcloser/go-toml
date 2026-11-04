@@ -1,0 +1,15 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "properties": {
+    "ascending": { "type": "object", "x-tombi-table-keys-order": "ascending" },
+    "descending": { "type": "object", "x-tombi-table-keys-order": "descending" },
+    "version": { "type": "object", "x-tombi-table-keys-order": "version-sort" },
+    "declared": {
+      "type": "object",
+      "x-tombi-table-keys-order": "schema",
+      "properties": { "name": {}, "version": {}, "edition": {} }
+    },
+    "unannotated": { "type": "object" }
+  }
+}
