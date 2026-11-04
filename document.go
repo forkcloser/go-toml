@@ -7,6 +7,9 @@ import (
 	"strings"
 
 	gotoml "github.com/pelletier/go-toml/v2"
+
+	"github.com/forkcloser/go-toml/internal/position"
+	"github.com/forkcloser/go-toml/internal/syntax"
 )
 
 // LocalDate is a TOML local date, as decoded into an untyped value ([any] or a map).
@@ -21,7 +24,7 @@ type LocalDateTime = gotoml.LocalDateTime
 
 // Document is a parsed TOML document, every byte of it kept.
 type Document struct {
-	root *node
+	root *syntax.Node
 }
 
 // Parse parses src, which must be TOML 1.1. The document keeps its own copy of src.
@@ -32,9 +35,9 @@ func Parse(src []byte) (*Document, error) {
 		return nil, err
 	}
 
-	root, err := parseTree(src)
+	root, err := syntax.Parse(src)
 	if err != nil {
-		return nil, err
+		return nil, internal(err)
 	}
 
 	return &Document{root: root}, nil
@@ -45,7 +48,7 @@ func Parse(src []byte) (*Document, error) {
 func (d *Document) Bytes() []byte {
 	var buf bytes.Buffer
 
-	d.root.write(&buf)
+	d.root.Write(&buf)
 
 	return buf.Bytes()
 }
@@ -89,7 +92,7 @@ func wrap(src []byte, err, sentinel error) error {
 	if strict, ok := errors.AsType[*gotoml.StrictMissingError](err); ok && len(strict.Errors) > 0 {
 		first := strict.Errors[0]
 		line, column := first.Position()
-		column = characterColumn(src, line, column)
+		column = position.Column(src, line, column)
 		msg := "unknown key"
 
 		if more := len(strict.Errors) - 1; more > 0 {
@@ -105,9 +108,9 @@ func wrap(src []byte, err, sentinel error) error {
 		return &Error{
 			Err:    sentinel,
 			Line:   line,
-			Column: characterColumn(src, line, byteColumn),
+			Column: position.Column(src, line, byteColumn),
 			Key:    decode.Key(),
-			Msg:    nameCharacter(strings.TrimPrefix(decode.Error(), "toml: "), src, line, byteColumn),
+			Msg:    position.NameCharacter(strings.TrimPrefix(decode.Error(), "toml: "), src, line, byteColumn),
 		}
 	}
 
@@ -120,4 +123,20 @@ func plural(n int, word string) string {
 	}
 
 	return strconv.Itoa(n) + " " + word + "s"
+}
+
+// internal turns the syntax tree failing on a document the decoder accepted into an
+// [Error] wrapping [ErrInternal]: a bug here, never the input's fault.
+func internal(err error) error {
+	location, ok := errors.AsType[*syntax.Error](err)
+	if !ok {
+		return &Error{Err: ErrInternal, Msg: err.Error()}
+	}
+
+	return &Error{
+		Err:    ErrInternal,
+		Line:   location.Line,
+		Column: location.Column,
+		Msg:    "the syntax tree failed on a document the decoder accepted: " + location.Msg,
+	}
 }
