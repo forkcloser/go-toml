@@ -100,15 +100,14 @@ func wrap(src []byte, err, sentinel error) error {
 	}
 
 	if decode, ok := errors.AsType[*gotoml.DecodeError](err); ok {
-		line, column := decode.Position()
-		column = characterColumn(src, line, column)
+		line, byteColumn := decode.Position()
 
 		return &Error{
 			Err:    sentinel,
 			Line:   line,
-			Column: column,
+			Column: characterColumn(src, line, byteColumn),
 			Key:    decode.Key(),
-			Msg:    strings.TrimPrefix(decode.Error(), "toml: "),
+			Msg:    nameCharacter(strings.TrimPrefix(decode.Error(), "toml: "), src, line, byteColumn),
 		}
 	}
 

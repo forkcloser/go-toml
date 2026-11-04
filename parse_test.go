@@ -2,6 +2,7 @@ package toml_test
 
 import (
 	"errors"
+	"strings"
 	"testing"
 
 	"github.com/forkcloser/go-toml"
@@ -73,6 +74,29 @@ func TestParseRefusesInvalidInput(t *testing.T) {
 			if located.Line != tc.line || located.Column != tc.column {
 				t.Fatalf("Parse(%q) at line %d, column %d; want line %d, column %d",
 					tc.input, located.Line, located.Column, tc.line, tc.column)
+			}
+		})
+	}
+}
+
+func TestParseNamesTheCharacter(t *testing.T) {
+	t.Parallel()
+
+	cases := map[string]struct {
+		input, named string
+	}{
+		"two-byte character":   {"a = é\n", "U+00E9 'é'"},
+		"three-byte character": {"a = 1 €\n", "U+20AC '€'"},
+		"single-byte":          {"a = 1 x\n", "U+0078 'x'"},
+	}
+
+	for name, tc := range cases {
+		t.Run(name, func(t *testing.T) {
+			t.Parallel()
+
+			_, err := toml.Parse([]byte(tc.input))
+			if err == nil || !strings.Contains(err.Error(), tc.named) {
+				t.Fatalf("Parse(%q) = %v, want an error naming %s", tc.input, err, tc.named)
 			}
 		})
 	}
