@@ -38,10 +38,26 @@ TOML file, as a limen lint and fix lane.
   can be replaced behind the API.
 - **TOML 1.1, fully**, reading and writing. Invalid input is an error with line,
   column and what was expected.
-- **Editing by byte range.** Find a table, a key or an array-of-tables element by
-  path; replace its value, insert a key or a table, remove one. Every byte outside
-  the edited range is unchanged. A new node is written in the canonical layout
-  (below).
+- **Editing by byte range.** A `Path` names a value by keys and indices
+  (`Key("tools", "fmt").Index(0)`). Each edit says the form it writes, since the
+  form is the author's choice, not something to guess:
+  - `doc.Set(path, value)` writes a key-value. A value written by a key-value
+    changes in place: its key, comments and position are kept. A new key-value goes
+    in its table: the table's section, its run of dotted keys, or its inline table.
+    A table known only through the headers below it gets a header of its own. A
+    table written as sections is not a value to set.
+  - `doc.SetTable(path, table)` writes a section, replacing a table in its place.
+  - `doc.Append(path, value)` adds an array of tables' element as a section, or an
+    element of an inline array.
+  - `doc.Delete(path)` removes everything that defines a value: its sections and
+    key-values with the comments above them, its elements.
+
+  Go values are written as go-toml's encoder writes them (a struct's fields in their
+  order, a map's keys sorted), spelled canonically: basic strings, floats in their
+  shortest form, keys bare where TOML allows. Every byte outside the edited range is
+  unchanged. A new node is written in the canonical layout (below). With
+  `WithSchema`, a new key-value or section goes where the schema's order puts it
+  among its siblings, and a new table's keys follow the order.
 - **Formatting.** `doc.Format(...Option) ([]byte, error)` applies the canonical
   layout to the whole document; `WithSchema(schema)` adds the schema's key order.
 - **Schemas.** `LoadSchema(path)` reads a JSON Schema; `doc.Validate(schema)` returns
@@ -161,8 +177,12 @@ tomlfmt --version
   ordering, on golden files for each strategy, group, combinator, comment
   placement, dotted key and inline table; fuzzing holds `Validate` to placing every
   violation inside the document; version sort on the style guide's own example.
-- Edits: each operation leaves every byte outside its range unchanged, checked on
-  real-world files (`Cargo.toml`, `pyproject.toml`, hermetic manifests).
+- Edits: exact output for each operation and form; each refusal leaves the document
+  as it was; on files shaped as `Cargo.toml`, `pyproject.toml` and hermetic manifests
+  are, setting any value changes its line only and deleting one removes a single run
+  of bytes; edits with a schema write what `Format` with the schema would; fuzzing
+  holds every edit of every value of every document to never failing its own
+  meaning check.
 
 ## Not in scope
 

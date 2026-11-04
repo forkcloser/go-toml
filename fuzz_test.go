@@ -140,3 +140,74 @@ func FuzzValidate(f *testing.F) {
 		}
 	})
 }
+
+// located is a value of a decoded document and its path.
+type located struct {
+	path  toml.Path
+	value any
+}
+
+// paths returns every value a decoded document holds, tables and arrays included,
+// the root left out.
+func paths(value any, at toml.Path, into *[]located) {
+	switch container := value.(type) {
+	case map[string]any:
+		for key, member := range container {
+			*into = append(*into, located{path: at.Key(key), value: member})
+			paths(member, at.Key(key), into)
+		}
+	case []any:
+		for i, element := range container {
+			*into = append(*into, located{path: at.Index(i), value: element})
+			paths(element, at.Index(i), into)
+		}
+	}
+}
+
+// FuzzEdit holds every edit, on every value of every document go-toml accepts, to
+// succeeding or to refusing what the document's shape does not allow: never to an
+// internal error, which is an edit whose result does not mean what the edit says
+// (each edit checks it).
+func FuzzEdit(f *testing.F) {
+	seed(f)
+
+	f.Fuzz(func(t *testing.T, input []byte) {
+		var decoded map[string]any
+		if gotoml.Unmarshal(input, &decoded) != nil {
+			return
+		}
+
+		var all []located
+
+		paths(decoded, toml.Path{}, &all)
+
+		if len(all) > 64 {
+			all = all[:64]
+		}
+
+		all = append(all, located{path: toml.Key("fuzz-new")})
+
+		edits := map[string]func(*toml.Document, toml.Path) error{
+			"Set":      func(d *toml.Document, p toml.Path) error { return d.Set(p, "fuzz") },
+			"SetTable": func(d *toml.Document, p toml.Path) error { return d.SetTable(p, map[string]any{"k": 1}) },
+			"Append":   func(d *toml.Document, p toml.Path) error { return d.Append(p, map[string]any{"k": 1}) },
+			"Delete":   func(d *toml.Document, p toml.Path) error { return d.Delete(p) },
+			"Set new":  func(d *toml.Document, p toml.Path) error { return d.Set(p.Key("fuzz-key"), 1) },
+		}
+
+		for _, found := range all {
+			path := found.path
+
+			for name, apply := range edits {
+				doc, err := toml.Parse(input)
+				if err != nil {
+					t.Fatalf("Parse(%q): %v", input, err)
+				}
+
+				if err := apply(doc, path); errors.Is(err, toml.ErrInternal) {
+					t.Fatalf("%s(%s) on %q: %v", name, path, input, err)
+				}
+			}
+		}
+	})
+}

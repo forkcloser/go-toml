@@ -1,0 +1,21 @@
+schema = 1
+platforms = ["darwin/arm64", "linux/amd64"]
+
+[[include]]
+path = ".hermetic/base.toml"
+
+[tools.fmt]
+source = "github:acme/fmt"
+version = "v1.4.2"
+asset = "fmt_{version}_{os}_{arch}.{ext}"
+ext = { default = "tar.gz", windows = "zip" }
+provides = ["fmt"]
+
+[tools.fmt.resolved]
+version = "v1.4.2"
+"darwin/arm64" = { digest = "sha256:4be1", size = 5242880 }
+"linux/amd64" = { digest = "sha256:0c9d", size = 5361664 }
+
+[tools.query]
+source = "github:acme/query"
+version = "v0.9.1"

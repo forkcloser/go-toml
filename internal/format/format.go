@@ -7,6 +7,7 @@ package format
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 	"unicode/utf8"
 
@@ -174,6 +175,77 @@ func keyPart(part *syntax.Node) string {
 	}
 
 	return content
+}
+
+// Names renders a key from its parts as the decoder reads them: each part bare when
+// TOML allows it, otherwise a basic string.
+func Names(names []string) string {
+	parts := make([]string, 0, len(names))
+
+	for _, name := range names {
+		parts = append(parts, Name(name))
+	}
+
+	return strings.Join(parts, ".")
+}
+
+// Name renders one part of a key: bare when TOML allows it, otherwise a basic
+// string.
+func Name(name string) string {
+	if name == "" {
+		return Quote(name)
+	}
+
+	for i := range len(name) {
+		if !syntax.IsBareKeyByte(name[i]) {
+			return Quote(name)
+		}
+	}
+
+	return name
+}
+
+// Quote renders text as a basic string: quotes, backslashes and control characters
+// escaped, everything else as it is.
+func Quote(text string) string {
+	var out strings.Builder
+
+	out.WriteByte('"')
+
+	for _, char := range text {
+		switch char {
+		case '"':
+			out.WriteString(`\"`)
+		case '\\':
+			out.WriteString(`\\`)
+		case '\b':
+			out.WriteString(`\b`)
+		case '\t':
+			out.WriteString(`\t`)
+		case '\n':
+			out.WriteString(`\n`)
+		case '\f':
+			out.WriteString(`\f`)
+		case '\r':
+			out.WriteString(`\r`)
+		default:
+			if char < ' ' || char == 0x7f {
+				fmt.Fprintf(&out, `\u%04X`, char)
+			} else {
+				out.WriteRune(char)
+			}
+		}
+	}
+
+	out.WriteByte('"')
+
+	return out.String()
+}
+
+// ValueAt renders a value whose first character is at the 0-based character
+// column, on a line at the indent level.
+func ValueAt(node *syntax.Node, indent, column int) string {
+	return value(node, indent, column)
 }
 
 func keyValue(n *syntax.Node, indent int) string {

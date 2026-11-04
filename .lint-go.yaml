@@ -68,6 +68,11 @@
 
 golangci:
   linters:
+    exclusions:
+      rules:
+        - path: _test\.go
+          linters:
+            - dupword # TOML test data repeats keys and words by design
     settings:
       wrapcheck:
         # this module's own packages: their errors carry their context already

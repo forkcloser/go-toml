@@ -1,0 +1,179 @@
+schema = 1
+requires = { hermetic = ">= v0.12.0" }   # optional: a behaviour newer than schema 1 implies
+platforms = ["darwin/arm64", "linux/amd64", "linux/arm64", "windows/amd64"]
+system-path = true   # OS base directories, after the project's tools
+path = ["{project}/.build/bin"]       # after the tools, before the OS directories
+env = { TMPDIR = "{location:tmp}" }    # for every command
+pass-env = ["GITHUB_TOKEN"]   # what this project needs from the caller; the host's own variables are the host's list
+cooldown = { default = "3d", "github:acme/*" = "0" }   # the organisation's own releases at once
+
+[registries]   # consulted by add and update only; never by install or run
+aqua = { source = "github:aquaproj/aqua-registry", commit = "3c9f0e5b1d2a…", digest = "sha256:aa41…" }
+corp = { source = "github:acme/hermetic-registry", commit = "7e21d0c4…", digest = "sha256:0f3b…" }
+
+[[include]]
+path = ".hermetic/base.toml"   # the organisation's baseline, written by its scaffolding
+exclude = ["lint-legacy"]
+
+[[include]]
+path = ".hermetic/release-tools.toml"
+
+[locations]
+tmp = "{project}/.build/tmp"
+cache = "{state}/cache"
+tc-shared = "{shared}/tc-{version:toolchain}"
+ide-cache = {
+  path = "{home}/.cache/acme-ide",
+  outside = "the editor plugin reads this cache; a second copy would double it on disk",
+}
+
+# Build provenance and a keyless signature, both pinned: the shape to aim for.
+# The baseline also defines fmt; this project pins its own, deliberately.
+[tools.fmt]
+overrides = ".hermetic/base.toml"
+imported = "aqua@3c9f0e5b1d2a"
+source = "github:acme/fmt"
+version = "v1.4.2"
+asset = "fmt_{version}_{os}_{arch}.{ext}"
+ext = { default = "tar.gz", windows = "zip" }
+provides = ["fmt"]
+sbom = "fmt_{version}_sbom.cdx.json"
+
+[tools.fmt.authenticity.github-attestation]
+source = { repository = "acme/fmt", id = 81234567, owner-id = 9876543, ref = "refs/tags/v*" }
+signer = { workflow = "acme/fmt/.github/workflows/release.yaml", runners = "hosted" }
+
+[tools.fmt.authenticity.sigstore]
+material = ["checksums.txt", "checksums.txt.sigstore.json"]
+issuer = "https://token.actions.githubusercontent.com"
+source = { repository = "acme/fmt", id = 81234567, owner-id = 9876543, ref = "refs/tags/v*" }
+signer = { workflow = "acme/fmt/.github/workflows/release.yaml" }
+tlog = "required"
+
+[tools.fmt.resolved]
+version = "v1.4.2"
+"darwin/arm64"  = { digest = "sha256:4be1c0…", size = 5242880, host = "macos>=12" }
+"linux/amd64"   = { digest = "sha256:0c9d7a…", size = 5361664, host = "static" }
+"linux/arm64"   = { digest = "sha256:77a2e4…", size = 5103616, host = "static" }
+"windows/amd64" = { digest = "sha256:e3108b…", size = 5498880, host = "windows>=10" }
+
+# An immutable release and nothing else: authentic as published; no SBOM.
+[tools.query]
+source = "github:acme/query"
+version = "v0.9.0"
+asset = "query-{os}-{arch}{exe}"
+provides = ["query"]
+authenticity.release-attestation = { repository = { name = "acme/query", id = 55501234, owner-id = 9876543 } }
+missing.sbom = "not published; requested at https://github.com/acme/query/issues/121"
+
+[tools.query.resolved]
+version = "v0.9.0"
+"darwin/arm64"  = { digest = "sha256:51f0aa…", size = 2097152, host = "macos>=11" }
+"linux/amd64"   = { digest = "sha256:a91c3e…", size = 2162688, host = "glibc>=2.31" }
+"linux/arm64"   = { digest = "sha256:2d77b0…", size = 2031616, host = "glibc>=2.31" }
+"windows/amd64" = { digest = "sha256:c4e912…", size = 2228224, host = "windows>=10" }
+
+# Several executables, a missing platform, its own environment, a key signature
+# and SLSA provenance bound to its source and tag.
+[tools.toolchain]
+imported = "corp@7e21d0c4"   # added as corp:tc
+source = "github:acme/toolchain"
+version = "v2.1.0"
+asset = "toolchain-{version}.{os}-{arch}.tar.gz"
+provides = { tc = "toolchain/bin/tc", tcfmt = "toolchain/bin/tcfmt" }
+sbom = "toolchain-{version}.spdx.json"
+platforms.exclude = { "windows/amd64" = "no Windows build upstream; Windows contributors use WSL" }
+
+[tools.toolchain.env]   # only when tc or tcfmt runs
+TC_CACHE = "{location:tc-shared}"
+TC_CONFIG_HOME = "{location:cache}/tc-config"
+TC_ENGINE_SRC = "{path:engine-src}"
+
+[tools.toolchain.authenticity.slsa]
+material = ["multiple.intoto.jsonl"]
+source = { repository = "acme/toolchain", id = 61230987, ref = "refs/tags/v*" }
+signer = {
+  workflow = "slsa-framework/slsa-github-generator/.github/workflows/generator_generic_slsa3.yml",
+  ref = "refs/tags/v*",
+}
+
+[tools.toolchain.authenticity.minisign]
+material = ["toolchain-{version}.{os}-{arch}.tar.gz.minisig"]
+key = "RWQ<acme toolchain release key>"
+
+[tools.toolchain.resolved]
+version = "v2.1.0"
+"darwin/arm64" = { digest = "sha256:9e0c21…", size = 104857600, host = "macos>=13" }
+"linux/amd64"  = { digest = "sha256:6b43d8…", size = 110100480, host = "glibc>=2.28" }
+"linux/arm64"  = { digest = "sha256:f18a07…", size = 106954752, host = "glibc>=2.28" }
+
+# Served from the publisher's site, tagged on GitHub, unsigned: only the digest
+# vouches for it, and the manifest says why.
+[tools.lang]
+source = "https://dl.acme.example/lang/lang{version}.{os}-{arch}.{ext}"
+versions = { github-tags = "acme/lang", prefix = "lang" }
+version = "1.31.2"
+ext = { default = "tar.gz", windows = "zip" }
+provides = { lang = "lang/bin/lang", langfmt = "lang/bin/langfmt" }
+opt-out.authenticity = "not signed, no provenance; the checksum index is served by the same host"
+missing.sbom = "not published"
+
+[tools.lang.resolved]
+version = "1.31.2"
+"darwin/arm64"  = { digest = "sha256:1d84f2…", size = 73400320, host = "macos>=12" }
+"linux/amd64"   = { digest = "sha256:b20e6c…", size = 75497472, host = "static" }
+"linux/arm64"   = { digest = "sha256:5fa391…", size = 71303168, host = "static" }
+"windows/amd64" = { digest = "sha256:9c07ad…", size = 77594624, host = "windows>=10" }
+
+# An irregular release: its own spelling of the OS, another layout on Windows.
+[tools.hub]
+source = "github:acme/hub"
+version = "v2.62.0"
+names = { os = { darwin = "macOS" } }
+asset = "hub_{version}_{os}_{arch}.{ext}"
+ext = { default = "tar.gz", windows = "zip" }
+provides = { hub = "hub_{version}_{os}_{arch}/bin/hub" }
+overrides.windows = { provides = { hub = "bin/hub.exe" } }
+# authenticity, sbom and resolved as for fmt
+
+# The same names from two packages, on disjoint platforms.
+[tools.coreutils]
+source = "github:acme/coreutils"
+platforms.only = ["darwin/arm64", "linux/amd64", "linux/arm64"]
+provides = ["cat", "ls", "sort", "tar"]
+# …
+
+[tools.git-windows]
+source = "github:acme/git-for-windows"
+platforms.only = ["windows/amd64"]
+provides = {
+  cat = "usr/bin/cat.exe", ls = "usr/bin/ls.exe", sort = "usr/bin/sort.exe",
+  tar = "usr/bin/tar.exe", bash = "bin/bash.exe",
+}
+# …
+
+# Source to build, signed by a release manager, on GitHub Enterprise: the host is named.
+[artifacts.engine-src]
+source = "github:ghe.corp.example/acme/engine"
+version = "v5.0.1"
+asset = "engine-{version}.src.tar.xz"
+extract = false
+authenticity.gpg = { material = ["engine-{version}.src.tar.xz.asc"], fingerprint = "<40-hex fingerprint>" }
+resolved = { version = "v5.0.1", any = { digest = "sha256:83c1f9…", size = 31457280 } }
+
+# Data from a plain HTTPS server, signed directly.
+[artifacts.corpus]
+source = "https://downloads.example.org/corpus/corpus-2026-10.tar.zst"
+extract = true
+authenticity.minisign = {
+  material = ["https://downloads.example.org/corpus/corpus-2026-10.tar.zst.minisig"],
+  key = "RWT<example.org corpus key>",
+}
+resolved.any = { digest = "sha256:2a6e50…", size = 524288000 }
+
+# One folder of a repository at a commit that has no release.
+[artifacts.flac-conformance]
+source = "github:acme/flac-test-files@4f0c9a2e7b1d…"   # 40 hex
+path = "subset"
+authenticity.commit = { reachable-from = ["refs/heads/main"] }   # or signed = "<identity>", if the repository signs
+resolved.any = { tree = "git:9d1e44c0…", digest = "sha256:71b3a8…", size = 268435456 }
