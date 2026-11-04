@@ -14,10 +14,18 @@ if err := toml.Decode(data, &config); err != nil {
 doc, err := toml.Parse(data) // doc.Bytes() is data, byte for byte
 ```
 
-```sh
-tomlfmt config.toml            # format in place
-tomlfmt --check *.toml         # print the diff of what is not formatted, exit 1
+```go
+schema, err := toml.LoadSchema("config.schema.json") // a local JSON Schema
+err = doc.Validate(schema)                           // toml.Violations, each with line and column
+formatted, err := doc.Format(toml.WithSchema(schema)) // keys in the schema's order
 ```
 
-Parsing, decoding and formatting are built; editing by byte range and schemas are
-specified in [docs/SPEC.md](docs/SPEC.md) and come next.
+```sh
+tomlfmt config.toml                         # format in place
+tomlfmt --check *.toml                      # print the diff of what is not formatted, exit 1
+tomlfmt --schema config.schema.json a.toml  # validate (exit 4), and order keys by the schema
+```
+
+A file whose first line is `#:schema <path>` names its own schema, relative to it.
+Parsing, decoding, formatting and schemas are built; editing by byte range is
+specified in [docs/SPEC.md](docs/SPEC.md) and comes next.
