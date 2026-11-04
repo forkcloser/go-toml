@@ -1,4 +1,4 @@
-package toml
+package syntax
 
 import (
 	"bytes"
@@ -6,6 +6,17 @@ import (
 	"time"
 	"unicode/utf8"
 )
+
+// Error is the parser failing at a 1-based line and character column. The parser runs
+// only on documents the decoder accepted, so an Error is a bug in the parser.
+type Error struct {
+	Line, Column int
+	Msg          string
+}
+
+func (e *Error) Error() string {
+	return fmt.Sprintf("line %d, column %d: %s", e.Line, e.Column, e.Msg)
+}
 
 // parser builds the syntax tree of a document the decoder has already accepted, so
 // it may be lenient where the decoder is strict: what it must get exactly right is
@@ -15,9 +26,10 @@ type parser struct {
 	pos int
 }
 
-func parseTree(src []byte) (*node, error) {
+// Parse builds the tree of src, a document the decoder has already accepted.
+func Parse(src []byte) (*Node, error) {
 	state := &parser{src: src}
-	doc := &node{kind: kindDocument, children: []*node{}}
+	doc := &Node{Kind: KindDocument, Children: []*Node{}}
 
 	for !state.eof() {
 		if err := state.line(doc); err != nil {
@@ -30,7 +42,7 @@ func parseTree(src []byte) (*node, error) {
 
 // line takes what one line holds: nothing, a comment, a table header or a key and its
 // value, then whatever ends the line.
-func (p *parser) line(doc *node) error {
+func (p *parser) line(doc *Node) error {
 	p.whitespace(doc)
 
 	if p.eof() {
@@ -38,7 +50,7 @@ func (p *parser) line(doc *node) error {
 	}
 
 	var (
-		expression *node
+		expression *Node
 		err        error
 	)
 
@@ -76,8 +88,8 @@ func (p *parser) at(s string) bool {
 	return bytes.HasPrefix(p.src[p.pos:], []byte(s))
 }
 
-func (p *parser) token(tokenKind kind, length int) *node {
-	t := &node{kind: tokenKind, text: p.src[p.pos : p.pos+length]}
+func (p *parser) token(tokenKind Kind, length int) *Node {
+	t := &Node{Kind: tokenKind, Text: p.src[p.pos : p.pos+length]}
 	p.pos += length
 
 	return t
@@ -95,32 +107,27 @@ func (p *parser) errorf(format string, args ...any) error {
 		}
 	}
 
-	return &Error{
-		Err:    ErrInternal,
-		Line:   line,
-		Column: column,
-		Msg:    "the syntax tree failed on a document the decoder accepted: " + fmt.Sprintf(format, args...),
-	}
+	return &Error{Line: line, Column: column, Msg: fmt.Sprintf(format, args...)}
 }
 
 // whitespace adds the run of spaces and tabs at the current position, if any.
-func (p *parser) whitespace(parent *node) {
+func (p *parser) whitespace(parent *Node) {
 	end := p.pos
 	for end < len(p.src) && (p.src[end] == ' ' || p.src[end] == '\t') {
 		end++
 	}
 
 	if end > p.pos {
-		parent.add(p.token(kindWhitespace, end-p.pos))
+		parent.add(p.token(KindWhitespace, end-p.pos))
 	}
 }
 
-func (p *parser) newline(parent *node) error {
+func (p *parser) newline(parent *Node) error {
 	switch {
 	case p.at("\n"):
-		parent.add(p.token(kindNewline, len("\n")))
+		parent.add(p.token(KindNewline, len("\n")))
 	case p.at("\r\n"):
-		parent.add(p.token(kindNewline, len("\r\n")))
+		parent.add(p.token(KindNewline, len("\r\n")))
 	default:
 		return p.errorf("carriage return without a line feed")
 	}
@@ -129,18 +136,18 @@ func (p *parser) newline(parent *node) error {
 }
 
 // comment takes everything up to the end of the line, the line ending excluded.
-func (p *parser) comment() *node {
+func (p *parser) comment() *Node {
 	end := p.pos
 	for end < len(p.src) && p.src[end] != '\n' && !bytes.HasPrefix(p.src[end:], []byte("\r\n")) {
 		end++
 	}
 
-	return p.token(kindComment, end-p.pos)
+	return p.token(KindComment, end-p.pos)
 }
 
 // endOfLine takes what may follow an expression on its line: whitespace, a comment,
 // and the line ending, or the end of the document.
-func (p *parser) endOfLine(parent *node) error {
+func (p *parser) endOfLine(parent *Node) error {
 	p.whitespace(parent)
 
 	if !p.eof() && p.peek() == '#' {
@@ -156,7 +163,7 @@ func (p *parser) endOfLine(parent *node) error {
 
 // gap takes whitespace, comments and line endings, as arrays and inline tables allow
 // between their elements.
-func (p *parser) gap(parent *node) error {
+func (p *parser) gap(parent *Node) error {
 	for !p.eof() {
 		switch p.peek() {
 		case ' ', '\t':
@@ -175,13 +182,13 @@ func (p *parser) gap(parent *node) error {
 	return nil
 }
 
-func (p *parser) header() (*node, error) {
-	headerKind, openKind, closeKind, closing := kindTable, kindOpenBracket, kindCloseBracket, "]"
+func (p *parser) header() (*Node, error) {
+	headerKind, openKind, closeKind, closing := KindTable, KindOpenBracket, KindCloseBracket, "]"
 	if p.at("[[") {
-		headerKind, openKind, closeKind, closing = kindArrayTable, kindOpenDoubleBracket, kindCloseDoubleBracket, "]]"
+		headerKind, openKind, closeKind, closing = KindArrayTable, KindOpenDoubleBracket, KindCloseDoubleBracket, "]]"
 	}
 
-	header := &node{kind: headerKind, children: []*node{p.token(openKind, len(closing))}}
+	header := &Node{Kind: headerKind, Children: []*Node{p.token(openKind, len(closing))}}
 	p.whitespace(header)
 
 	key, err := p.key()
@@ -203,8 +210,8 @@ func (p *parser) header() (*node, error) {
 
 // key takes a simple or dotted key. Whitespace after its last part is left for the
 // caller, which owns what separates the key from what follows.
-func (p *parser) key() (*node, error) {
-	key := &node{kind: kindKey, children: []*node{}}
+func (p *parser) key() (*Node, error) {
+	key := &Node{Kind: KindKey, Children: []*Node{}}
 
 	for {
 		part, err := p.simpleKey()
@@ -215,7 +222,7 @@ func (p *parser) key() (*node, error) {
 		key.add(part)
 
 		mark := p.pos
-		gap := &node{children: []*node{}}
+		gap := &Node{Children: []*Node{}}
 		p.whitespace(gap)
 
 		if p.eof() || p.peek() != '.' {
@@ -224,13 +231,13 @@ func (p *parser) key() (*node, error) {
 			return key, nil
 		}
 
-		key.children = append(key.children, gap.children...)
-		key.add(p.token(kindDot, 1))
+		key.Children = append(key.Children, gap.Children...)
+		key.add(p.token(KindDot, 1))
 		p.whitespace(key)
 	}
 }
 
-func (p *parser) simpleKey() (*node, error) {
+func (p *parser) simpleKey() (*Node, error) {
 	if p.eof() {
 		return nil, p.errorf("expected a key")
 	}
@@ -251,7 +258,7 @@ func (p *parser) simpleKey() (*node, error) {
 		return nil, p.errorf("expected a key")
 	}
 
-	return p.token(kindBareKey, end-p.pos), nil
+	return p.token(KindBareKey, end-p.pos), nil
 }
 
 func isBareKeyByte(char byte) bool {
@@ -259,8 +266,8 @@ func isBareKeyByte(char byte) bool {
 		char == '_' || char == '-'
 }
 
-func (p *parser) keyValue() (*node, error) {
-	keyValue := &node{kind: kindKeyValue, children: []*node{}}
+func (p *parser) keyValue() (*Node, error) {
+	keyValue := &Node{Kind: KindKeyValue, Children: []*Node{}}
 
 	key, err := p.key()
 	if err != nil {
@@ -274,7 +281,7 @@ func (p *parser) keyValue() (*node, error) {
 		return nil, p.errorf("expected \"=\"")
 	}
 
-	keyValue.add(p.token(kindEquals, 1))
+	keyValue.add(p.token(KindEquals, 1))
 	p.whitespace(keyValue)
 
 	value, err := p.value()
@@ -287,36 +294,36 @@ func (p *parser) keyValue() (*node, error) {
 	return keyValue, nil
 }
 
-func (p *parser) value() (*node, error) {
+func (p *parser) value() (*Node, error) {
 	if p.eof() {
 		return nil, p.errorf("expected a value")
 	}
 
 	switch {
 	case p.at(`"""`):
-		return p.multilineString(kindMultilineBasicString, `"""`, true)
+		return p.multilineString(KindMultilineBasicString, `"""`, true)
 	case p.at(`'''`):
-		return p.multilineString(kindMultilineLiteralString, `'''`, false)
+		return p.multilineString(KindMultilineLiteralString, `'''`, false)
 	case p.peek() == '"':
 		return p.basicString()
 	case p.peek() == '\'':
 		return p.literalString()
 	case p.peek() == '[':
-		return p.collection(kindArray, kindOpenBracket, kindCloseBracket, ']', "array", p.value)
+		return p.collection(KindArray, KindOpenBracket, KindCloseBracket, ']', "array", p.value)
 	case p.peek() == '{':
-		return p.collection(kindInlineTable, kindOpenBrace, kindCloseBrace, '}', "inline table", p.keyValue)
+		return p.collection(KindInlineTable, KindOpenBrace, KindCloseBrace, '}', "inline table", p.keyValue)
 	}
 
 	return p.scalar()
 }
 
-func (p *parser) basicString() (*node, error) {
+func (p *parser) basicString() (*Node, error) {
 	for end := p.pos + 1; end < len(p.src); end++ {
 		switch p.src[end] {
 		case '\\':
 			end++
 		case '"':
-			return p.token(kindBasicString, end+1-p.pos), nil
+			return p.token(KindBasicString, end+1-p.pos), nil
 		case '\n', '\r':
 			return nil, p.errorf("line ending in a string")
 		}
@@ -325,11 +332,11 @@ func (p *parser) basicString() (*node, error) {
 	return nil, p.errorf("unterminated string")
 }
 
-func (p *parser) literalString() (*node, error) {
+func (p *parser) literalString() (*Node, error) {
 	for end := p.pos + 1; end < len(p.src); end++ {
 		switch p.src[end] {
 		case '\'':
-			return p.token(kindLiteralString, end+1-p.pos), nil
+			return p.token(KindLiteralString, end+1-p.pos), nil
 		case '\n', '\r':
 			return nil, p.errorf("line ending in a string")
 		}
@@ -340,7 +347,7 @@ func (p *parser) literalString() (*node, error) {
 
 // multilineString ends at the first run of three or more delimiters: up to two
 // delimiters right before the closing three belong to the content.
-func (p *parser) multilineString(stringKind kind, delimiter string, escapes bool) (*node, error) {
+func (p *parser) multilineString(stringKind Kind, delimiter string, escapes bool) (*Node, error) {
 	quote := delimiter[0]
 
 	for end := p.pos + len(delimiter); end < len(p.src); end++ {
@@ -366,7 +373,7 @@ func (p *parser) multilineString(stringKind kind, delimiter string, escapes bool
 
 // scalar takes an integer, a float, a boolean or a date-time. A date followed by a
 // space and a time is one value.
-func (p *parser) scalar() (*node, error) {
+func (p *parser) scalar() (*Node, error) {
 	end := p.pos
 	for end < len(p.src) {
 		switch char := p.src[end]; {
@@ -382,14 +389,14 @@ func (p *parser) scalar() (*node, error) {
 	return p.scalarToken(end)
 }
 
-func (p *parser) scalarToken(end int) (*node, error) {
+func (p *parser) scalarToken(end int) (*Node, error) {
 	if end == p.pos {
 		r, _ := utf8.DecodeRune(p.src[p.pos:])
 
 		return nil, p.errorf("expected a value, found %q", r)
 	}
 
-	return p.token(kindScalar, end-p.pos), nil
+	return p.token(KindScalar, end-p.pos), nil
 }
 
 func isScalarByte(char byte) bool {
@@ -423,12 +430,12 @@ func isTimeStart(b []byte) bool {
 // collection takes an array or an inline table: elements separated by commas, a
 // trailing comma allowed, whitespace, comments and line endings between them.
 func (p *parser) collection(
-	collectionKind, openKind, closeKind kind,
+	collectionKind, openKind, closeKind Kind,
 	closing byte,
 	name string,
-	element func() (*node, error),
-) (*node, error) {
-	collection := &node{kind: collectionKind, children: []*node{p.token(openKind, 1)}}
+	element func() (*Node, error),
+) (*Node, error) {
+	collection := &Node{Kind: collectionKind, Children: []*Node{p.token(openKind, 1)}}
 
 	for {
 		if err := p.gap(collection); err != nil {
@@ -462,7 +469,7 @@ func (p *parser) collection(
 
 		switch p.peek() {
 		case ',':
-			collection.add(p.token(kindComma, 1))
+			collection.add(p.token(KindComma, 1))
 		case closing:
 			collection.add(p.token(closeKind, 1))
 
