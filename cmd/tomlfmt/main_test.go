@@ -92,7 +92,12 @@ func TestStandardInput(t *testing.T) {
 func TestFileInPlace(t *testing.T) {
 	t.Parallel()
 
-	path := writeFile(t, unformatted, 0o640)
+	// Group-writable: the bit a common umask (022) clears from a file made anew.
+	path := writeFile(t, unformatted, 0o664)
+
+	if err := os.Chmod(path, 0o664); err != nil {
+		t.Fatalf("chmod %s: %v", path, err)
+	}
 
 	if got := tomlfmt(t, "", path); got.code != exitDone || got.stdout != "" || got.stderr != "" {
 		t.Fatalf("tomlfmt %s = %+v, want exit 0 and no output", path, got)
@@ -107,8 +112,8 @@ func TestFileInPlace(t *testing.T) {
 		t.Fatalf("stat %s: %v", path, err)
 	}
 
-	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o640 {
-		t.Fatalf("the file's mode is %v, want it kept at 0640", info.Mode().Perm())
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o664 {
+		t.Fatalf("the file's mode is %v, want it kept at 0664", info.Mode().Perm())
 	}
 
 	entries, err := os.ReadDir(filepath.Dir(path))

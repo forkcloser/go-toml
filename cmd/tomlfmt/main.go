@@ -27,6 +27,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/mycophonic/primordium/filesystem"
+
 	"github.com/forkcloser/xos"
 
 	"github.com/forkcloser/go-toml"
@@ -287,49 +289,24 @@ func report(name string, source, formatted []byte, stdout io.Writer) int {
 	return exitDifferent
 }
 
-// replace writes data over path atomically: a temporary file beside it, with path's
-// mode, synced, then renamed over it.
+// replace writes data over path atomically, keeping path's mode: the write
+// creates the file anew, with the mode the umask leaves, so the mode is set again
+// after it.
 func replace(path string, data []byte) error {
 	info, err := xos.Stat(path)
 	if err != nil {
 		return fmt.Errorf("%w: %w", errIO, err)
 	}
 
-	temporary, err := xos.CreateTemp(filepath.Dir(path), "."+filepath.Base(path)+".*")
-	if err != nil {
+	mode := info.Mode().Perm()
+
+	if err := filesystem.WriteFile(path, data, mode); err != nil {
 		return fmt.Errorf("%w: %w", errIO, err)
 	}
 
-	name := temporary.Name()
-
-	if err := write(temporary, data, info.Mode().Perm()); err != nil {
-		_ = os.Remove(name)
-
-		return err
-	}
-
-	if err := xos.Rename(name, path); err != nil {
-		_ = os.Remove(name)
-
+	if err := os.Chmod(path, mode); err != nil {
 		return fmt.Errorf("%w: %w", errIO, err)
 	}
 
 	return nil
-}
-
-func write(temporary *os.File, data []byte, mode os.FileMode) error {
-	_, err := temporary.Write(data)
-	if err == nil {
-		err = temporary.Chmod(mode)
-	}
-
-	if err == nil {
-		err = temporary.Sync()
-	}
-
-	if closeErr := temporary.Close(); err == nil {
-		err = closeErr
-	}
-
-	return err
 }
