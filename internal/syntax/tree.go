@@ -2,7 +2,10 @@
 // document is the text of one of its tokens, in order.
 package syntax
 
-import "bytes"
+import (
+	"bytes"
+	"strconv"
+)
 
 // Kind is what a node of the tree is.
 type Kind uint8
@@ -65,6 +68,36 @@ func (n *Node) Write(buf *bytes.Buffer) {
 	for _, child := range n.Children {
 		child.Write(buf)
 	}
+}
+
+// Key returns the key of a key-value or a table header. Parse builds every one with
+// a key, so a node without one is a bug in this package, and panics.
+func (n *Node) Key() *Node {
+	for _, child := range n.Children {
+		if child.Kind == KindKey {
+			return child
+		}
+	}
+
+	panic("syntax: a node without a key: " + strconv.Itoa(int(n.Kind)))
+}
+
+// Value returns the value of a key-value, the node after its "=". Parse builds every
+// key-value with a value, so one without is a bug in this package, and panics.
+func (n *Node) Value() *Node {
+	for i, child := range n.Children {
+		if child.Kind != KindEquals {
+			continue
+		}
+
+		for _, after := range n.Children[i+1:] {
+			if after.Kind != KindWhitespace {
+				return after
+			}
+		}
+	}
+
+	panic("syntax: a key-value without a value")
 }
 
 func (n *Node) add(child *Node) {

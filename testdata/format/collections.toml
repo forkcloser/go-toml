@@ -1,0 +1,26 @@
+short = [ 1,2 ,3 ]
+empty = [ ]
+empty_table = { }
+inline = {a=1,b={c=[1, 2]}}
+long = ["aaaaaaaaaaaaaaaaaaaa", "bbbbbbbbbbbbbbbbbbbbbbbb", "cccccccccccccccccccccccccc", "dddddddddddddddd"]
+nested = [[1, 2], ["xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx", "yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyy", "zzzzzzzzzzzzzzzzzzzzzzzzzz"]]
+spread = [
+  1,
+  2
+]
+kept = [
+  "darwin/arm64",
+  "linux/amd64",
+]
+asked = [1, 2,]
+commented = [
+  1, # one
+  # on its own line
+  2,
+]
+opened = [ # about the array
+  1,
+]
+strings = ["""a
+b""", "c"]
+long_inline = { name = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", path = "bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb" }

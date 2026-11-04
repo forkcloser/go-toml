@@ -1,0 +1,9 @@
+title = "x"
+indented = 1
+a.b.c = 2
+
+[server.main]
+port = 80
+
+[[items]]
+name = 'a'

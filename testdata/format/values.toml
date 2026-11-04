@@ -1,0 +1,11 @@
+hex = 0xDEAD_beef
+big = 1_000_000
+float = 6.626e-34
+special = -inf
+when = 1979-05-27 07:32:00Z
+local = 07:32
+literal = 'C:\path'
+multi = '''
+  spaced   as written
+'''
+basic = "tab\tand \u00e9"
