@@ -1,0 +1,41 @@
+[package]
+name = "demo"
+version = "0.3.1"
+edition = "2021"
+rust-version = "1.74"
+description = "A demonstration crate"
+license = "MIT OR Apache-2.0"
+repository = "https://example.com/demo"
+keywords = ["demo", "example"]
+
+[features]
+default = ["std"]
+std = []
+serde = ["dep:serde", "chrono/serde"]
+
+[dependencies]
+anyhow = "1.0"
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
+serde = { version = "1", features = ["derive"], optional = true }
+tokio = { version = "1.37", features = [
+  "macros",
+  "rt-multi-thread", # the runtime the binary uses
+] }
+
+[dev-dependencies]
+criterion = "0.5"
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.52", features = ["Win32_Foundation"] }
+
+[[bin]]
+name = "demo"
+path = "src/main.rs"
+
+[[bench]]
+name = "parse"
+harness = false
+
+[profile.release]
+lto = true
+codegen-units = 1

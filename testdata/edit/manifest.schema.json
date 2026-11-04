@@ -1,0 +1,45 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "x-tombi-table-keys-order": "schema",
+  "properties": {
+    "schema": { "type": "integer" },
+    "platforms": { "type": "array", "items": { "type": "string" } },
+    "include": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "x-tombi-table-keys-order": "schema",
+        "properties": { "path": { "type": "string" }, "exclude": { "type": "array" } }
+      }
+    },
+    "tools": {
+      "type": "object",
+      "x-tombi-table-keys-order": "ascending",
+      "additionalProperties": { "$ref": "#/$defs/tool" }
+    }
+  },
+  "$defs": {
+    "tool": {
+      "type": "object",
+      "x-tombi-table-keys-order": "schema",
+      "properties": {
+        "source": { "type": "string" },
+        "version": { "type": "string" },
+        "asset": { "type": "string" },
+        "ext": { "type": "object", "x-tombi-table-keys-order": { "properties": "schema", "additionalProperties": "ascending" }, "properties": { "default": {} } },
+        "provides": {},
+        "resolved": {
+          "type": "object",
+          "x-tombi-table-keys-order": { "properties": "schema", "additionalProperties": "version-sort" },
+          "properties": { "version": {} },
+          "additionalProperties": {
+            "type": "object",
+            "x-tombi-table-keys-order": "schema",
+            "properties": { "digest": {}, "size": {} }
+          }
+        }
+      }
+    }
+  }
+}

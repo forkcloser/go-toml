@@ -26,6 +26,12 @@ tomlfmt --check *.toml                      # print the diff of what is not form
 tomlfmt --schema config.schema.json a.toml  # validate (exit 4), and order keys by the schema
 ```
 
+```go
+doc.Set(toml.Key("tools", "fmt", "version"), "v1.5.0")         // only the value's bytes change
+doc.SetTable(toml.Key("tools", "jq"), tool, toml.WithSchema(s)) // a section, where the schema orders it
+doc.Append(toml.Key("include"), include)                        // an [[include]] element
+doc.Delete(toml.Key("tools", "query"))                          // its sections and comments
+```
+
 A file whose first line is `#:schema <path>` names its own schema, relative to it.
-Parsing, decoding, formatting and schemas are built; editing by byte range is
-specified in [docs/SPEC.md](docs/SPEC.md) and comes next.
+[docs/SPEC.md](docs/SPEC.md) is the specification.

@@ -14,4 +14,10 @@
 // the line, column and key of the value; [WithSchema] has [Document.Format] order
 // each table's keys by the schema's x-tombi-table-keys-order annotations. A file
 // LoadSchema cannot use is an error wrapping [ErrSchema].
+//
+// [Document.Set], [Document.SetTable], [Document.Append] and [Document.Delete] edit
+// a document by byte range at a [Path]: every byte outside the edit is kept. Each
+// edit is checked to mean what it says, the document decoded after equal to the
+// document before with the edit applied, and leaves the document as it was when it
+// fails: [ErrNotFound], [ErrConflict], [ErrValue].
 package toml
