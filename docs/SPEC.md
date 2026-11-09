@@ -11,7 +11,8 @@ TOML file, as a limen lint and fix lane.
   fleet's tooling (limen) like every other repository.
 - The repository root (package `toml`): the library. `cmd/tomlfmt/`: the command.
 - Go, the book's baseline `go` directive; `github.com/forkcloser/xos` for every file
-  call it covers. Two dependencies, pinned: `pelletier/go-toml/v2` (its decoder) and
+  call it covers, and `mycophonic/primordium`'s `filesystem.WriteFile` to write a
+  file atomically. The library's two dependencies, pinned: `pelletier/go-toml/v2` (its decoder) and
   `santhosh-tekuri/jsonschema/v6` (validation), with `golang.org/x/text`, which
   jsonschema requires, for its messages; any other is argued in the pull request
   that adds it. Tests also use `toml-lang/toml-test/v2`, the official
@@ -147,8 +148,9 @@ tomlfmt [--check] [--schema <file>] [<file>…]
 tomlfmt --version
 ```
 
-- With files: format each in place, atomically (a temporary file beside it, with the
-  file's mode, synced, then renamed over it). Paths name files: which files of a tree
+- With files: format each in place, atomically (primordium's `filesystem.WriteFile`:
+  a temporary file beside it, synced, then renamed over it), the file's mode set
+  again after, since the umask trims the mode of a file made anew. Paths name files: which files of a tree
   to format is the caller's decision (limen's recipes list them through git), not a
   walk tomlfmt makes and every caller then has to steer.
 - Without paths: read standard input, write standard output.
