@@ -3,7 +3,7 @@ module github.com/forkcloser/go-toml
 go 1.26.0
 
 require (
-	github.com/forkcloser/xos v0.1.1
+	github.com/forkcloser/xos v0.1.2
 	github.com/mycophonic/primordium v0.15.1
 	github.com/pelletier/go-toml/v2 v2.4.3
 	github.com/santhosh-tekuri/jsonschema/v6 v6.0.3
