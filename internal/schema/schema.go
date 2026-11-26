@@ -10,7 +10,7 @@ import (
 
 	"github.com/santhosh-tekuri/jsonschema/v6"
 
-	"github.com/forkcloser/xos"
+	"github.com/forkcloser/go-xos"
 )
 
 // ErrInvalid is wrapped by the error about a file that is not a JSON Schema, or

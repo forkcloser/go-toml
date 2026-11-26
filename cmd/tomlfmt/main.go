@@ -29,7 +29,7 @@ import (
 
 	"github.com/mycophonic/primordium/filesystem"
 
-	"github.com/forkcloser/xos"
+	"github.com/forkcloser/go-xos"
 
 	"github.com/forkcloser/go-toml"
 	"github.com/forkcloser/go-toml/internal/diff"

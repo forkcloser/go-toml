@@ -10,7 +10,7 @@ TOML file, as a limen lint and fix lane.
 - Repository `forkcloser/go-toml`, module `github.com/forkcloser/go-toml`, under the
   fleet's tooling (limen) like every other repository.
 - The repository root (package `toml`): the library. `cmd/tomlfmt/`: the command.
-- Go, the book's baseline `go` directive; `github.com/forkcloser/xos` for every file
+- Go, the book's baseline `go` directive; `github.com/forkcloser/go-xos` for every file
   call it covers, and `mycophonic/primordium`'s `filesystem.WriteFile` to write a
   file atomically. The library's two dependencies, pinned: `pelletier/go-toml/v2` (its decoder) and
   `santhosh-tekuri/jsonschema/v6` (validation), with `golang.org/x/text`, which

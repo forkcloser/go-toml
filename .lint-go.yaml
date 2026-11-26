@@ -85,7 +85,7 @@ golangci:
               # the decoder the library delegates validity and decoding to
               - github.com/pelletier/go-toml/v2
               # every file call tomlfmt makes (book: xos replaces os)
-              - github.com/forkcloser/xos
+              - github.com/forkcloser/go-xos
               # its atomic file write, which tomlfmt formats in place with
               - github.com/mycophonic/primordium/filesystem
               # the JSON Schema validator schemas delegate to
