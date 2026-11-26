@@ -2,6 +2,8 @@ github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk
 github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
 github.com/dlclark/regexp2 v1.11.0 h1:G/nrcoOa7ZXlpoa/91N3X7mM3r8eIlMBBJZvsz/mxKI=
 github.com/dlclark/regexp2 v1.11.0/go.mod h1:DHkYz0B9wPfa6wondMfaivmHpzrQ3v9q8cnmRbL6yW8=
+github.com/forkcloser/go-xos v1.0.0-rc.1 h1:zdqsF6bIjGURgef6ZSY7lJn7XrGs53cKQgXScLFu2xE=
+github.com/forkcloser/go-xos v1.0.0-rc.1/go.mod h1:Q86v1/MuDQPc30BGkLmdH96uyCqM/C6Y+VPzp+dKPnQ=
 github.com/forkcloser/xos v0.1.2 h1:7TTH/bJ8hRIBIJPZp5WgIY//bgJFlyd+dpsgSEjnwOM=
 github.com/forkcloser/xos v0.1.2/go.mod h1:BxyGnZr+xW0m+0ph1xQ0qwHYs30hiXeUP7foOlKvxP0=
 github.com/google/go-cmp v0.7.0 h1:wk8382ETsv4JYUZwIsn6YpYiWiBsYLSJiTsyBybVuN8=
